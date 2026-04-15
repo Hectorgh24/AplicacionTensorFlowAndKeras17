@@ -1,185 +1,94 @@
-# Red Neuronal para Clasificación de Actividades Humanas
+# Aplicacion TensorFlow and Keras - 17 Clases
 
-Proyecto completo para entrenar, evaluar y desplegar modelos de clasificación de actividades humanas (UniMiB-SHAR) en dispositivos móviles/edge con TensorFlow Lite.  
-Autor: **Héctor (Estudiante de Licenciatura en Tecnologías Computacionales)**.
+Aplicacion movil Android desarrollada en Kotlin + Jetpack Compose para monitoreo de actividad humana con acelerometro y deteccion de caidas en tiempo real usando TensorFlow Lite.
 
-## 🧭 Índice
-1. [Visión General](#-visión-general)
-2. [Diferencias de Arquitectura (antes vs ahora)](#-diferencias-de-arquitectura-antes-vs-ahora)
-3. [Datasets Soportados](#-datasets-soportados)
-4. [Pipeline Secuencial Paso a Paso](#-pipeline-secuencial-paso-a-paso)
-5. [Artefactos que se generan](#-artefactos-que-se-generan)
-6. [Exportación a TensorFlow Lite](#-exportación-a-tensorflow-lite)
-7. [Estructura del Proyecto](#-estructura-del-proyecto)
-8. [Errores Comunes y cómo resolverlos](#-errores-comunes-y-cómo-resolverlos)
-9. [Documentación usada](#-documentación-usada)
-10. [Glosario ampliado](#-glosario-ampliado)
-11. [Licencia y contribución](#-licencia-y-contribución)
+## Indice
+1. [Descripcion general](#descripcion-general)
+2. [Recursos de IA (17 clases)](#recursos-de-ia-17-clases)
+3. [Clases que predice el modelo](#clases-que-predice-el-modelo)
+4. [Instalacion y ejecucion](#instalacion-y-ejecucion)
+5. [Estructura del proyecto](#estructura-del-proyecto)
+6. [Permisos y comportamiento de emergencia](#permisos-y-comportamiento-de-emergencia)
+7. [Registro y exportacion de reportes](#registro-y-exportacion-de-reportes)
 
-## 📝 Visión General
-- Clasificación de actividades humanas con acelerómetro (UniMiB-SHAR).
-- Modelos optimizados para desplegarse en **aplicaciones móviles (Kotlin/Android) mediante TFLite**.
-- Dos configuraciones de clases: 17 (completo) y 9 (caminar + caídas).
+## Descripcion general
+- La app captura datos del acelerometro a 50 Hz y procesa ventanas de 151 muestras x 3 ejes (453 valores).
+- El flujo de inferencia estandariza los datos con `StandardScaler` y ejecuta un modelo TFLite en dispositivo.
+- Si la prediccion supera el umbral de confianza (85%) y no corresponde a "Caminando", se activa el flujo de alerta.
+- El protocolo de emergencia intenta WhatsApp y despues SMS + llamada telefonica (si hay permisos).
 
-## 🧱 Diferencias de Arquitectura (antes vs ahora)
-- **Antes (MLP denso)**  
-  - Aplanaba las 453 features → perdía la relación temporal de las 151 muestras.  
-  - Más parámetros y menos eficiencia en despliegue móvil.  
-- **Ahora (Conv1D)**  
-  - Mantiene la forma (tiempo × ejes) y extrae patrones locales.  
-  - BatchNorm + Dropout + GaussianNoise para robustez.  
-  - GlobalAveragePooling reduce parámetros antes de la capa final.  
-  - Mejor ajuste para exportar a TFLite y ejecutar en Android.
+## Recursos de IA (17 clases)
+Archivos usados en `app/src/main/assets`:
 
-## 🗂️ Datasets Soportados
-- **entrenamiento_17_clases** (alias: `adl_fall_multiclass`, `17_clases`, `acc`)
-- **entrenamiento_9_clases** (alias: `two_classes`, `9_clases`)
+1. `entrenamiento_17_clases_mejor_modelo.tflite`
+2. `scaler_17_clases.json`
 
-## 🛠️ Pipeline Secuencial Paso a Paso (ambos modelos: 9 y 17 clases)
-0) **Descargar datos (ligero el repo, datos externos)**
-   ```bash
-   python scripts/download_data.py
-   ```
-   - Usa Google Drive (carpetas compartidas) y descarga **archivos ya convertidos**:  
-     - `data/raw_float32`: NPZ en precisión float32 (`*_data.npz`, `*_labels.npz`, `*_names.npz`) listos para entrenamiento y despliegue.  
-     - `data/raw_float64`: los mismos archivos en float64, útiles si quieres análisis con mayor precisión numérica o comparativas offline.  
-   - No incluye los `.mat` originales; solo los NPZ listos para usar.
-1) **Preparar entorno**
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-2) **Convertir datos crudos** (`.mat` → `.npz`, solo si no usaste el paso 0`)
-   - Si prefieres descargar los `.mat` originales del dataset UniMiB-SHAR, obtén el zip desde:  
-     https://www.dropbox.com/scl/fi/g5ig8nw9qqd253dz8woax/UniMiB-SHAR.zip?e=5&file_subpath=%2FUniMiB-SHAR%2Fdata%2Fresults%2Fresults51&rlkey=o0ltu8ivrr9rsfvdhr1bjv3cc&dl=0  
-   - Luego convierte a NPZ (float32 por defecto) con:
-   ```bash
-   python convert_mat_to_npz.py
-   python convert_to_float32.py
-   ```
-   - Si necesitas mantener precisión doble (float64) para análisis offline o comparativos, adapta el flujo a float64 o usa los archivos de `data/raw_float64` (descargados con el paso 0). Para despliegue y entrenamiento habitual, float32 es suficiente y recomendado.
-   - Salida esperada: `data/raw_float32/*_data.npz`, `*_labels.npz`, `*_names.npz`.
-3) **Entrenar** (elige dataset)
-   ```bash
-   python src/entrenamiento.py --dataset entrenamiento_17_clases
-   python src/entrenamiento.py --dataset entrenamiento_9_clases
-   ```
-4) **Generar reporte PDF**
-   ```bash
-   python src/generar_reporte.py --dataset entrenamiento_17_clases
-   python src/generar_reporte.py --dataset entrenamiento_9_clases
-   ```
-5) **Exportar a TFLite**
-   ```bash
-   python src/exportar_tflite.py --dataset entrenamiento_17_clases --output-dir exports/exportsTflite
-   python src/exportar_tflite.py --dataset entrenamiento_9_clases --output-dir exports/exportsTflite
-   ```
-   - Opcional (reducción de tamaño con soporte FP16):
-     ```bash
-     python src/exportar_tflite.py --dataset entrenamiento_9_clases --output-dir exports/exportsTflite --float16
-     ```
-6) **Exportar parámetros de preprocesamiento**
-   ```bash
-   python exportar_parametros_preprocesamiento.py --dataset entrenamiento_17_clases
-   python exportar_parametros_preprocesamiento.py --dataset entrenamiento_9_clases
-   ```
-   - Genera el JSON con `mean` y `scale` del `StandardScaler` usado en entrenamiento.
-   - Los archivos se guardan en `exports/parametros-preprocesamiento/` como:
-     - `scaler_9_clases.json`
-     - `scaler_17_clases.json`
-   - Este JSON es el input recomendado para tu aplicación móvil Kotlin, para normalizar datos de acelerómetro con la misma escala usada por el modelo.
-   - Si deseas, activa también la generación de Kotlin con `--generate-kotlin` para crear `DataPreprocessor.kt` automáticamente.
-7) **Usar en aplicación móvil (Kotlin/Android)**
-   - Copia el `.tflite` correspondiente (9 o 17 clases) y cárgalo con el intérprete de TensorFlow Lite.
-   - Carga además el JSON de `exports/parametros-preprocesamiento/` para normalizar las entradas con la misma media y escala que el modelo espera.
-   - Usa NNAPI/GPU delegate si el dispositivo lo soporta; si no, el intérprete CPU funciona.
+Estos dos recursos deben mantenerse sincronizados (modelo y parametros de normalizacion del mismo entrenamiento).
 
-## 📦 Artefactos que se generan
-- Modelos Keras: `models/<prefijo>_modelo.keras`, `models/<prefijo>_mejor_modelo.keras`
-- Métricas: `models/<prefijo>_metricas.json`
-- Datos para reporte: `logs/<prefijo>_y_test.npy`, `logs/<prefijo>_y_pred.npy`, `logs/<prefijo>_matriz_confusion.npy`
-- Gráficos: `logs/<prefijo>_historico.png`, `logs/<prefijo>_metricas_*.png`
-- Reporte: `models/<prefijo>.pdf`
-- TFLite: `exports/exportsTflite/<prefijo>_modelo.tflite`
-- Parámetros de preprocesamiento: `exports/parametros-preprocesamiento/scaler_9_clases.json` y `exports/parametros-preprocesamiento/scaler_17_clases.json`
+## Clases que predice el modelo
+El clasificador devuelve una de estas 17 etiquetas:
 
-> `<prefijo>` = `entrenamiento_17_clases` o `entrenamiento_9_clases`.
+1. De pie
+2. Levantandose
+3. Caminando
+4. Corriendo
+5. Subiendo
+6. Saltando
+7. Bajando
+8. Acostado
+9. Sentandose
+10. Caida frontal
+11. Caida a la derecha
+12. Caida hacia atras
+13. Caida contra obstaculo
+14. Caida (intentando protegerse)
+15. Caida al sentarse
+16. Desmayo / Sincope
+17. Caida a la izquierda
 
-## 📲 Exportación a TensorFlow Lite
-- Script: `src/exportar_tflite.py`
-- `--output-dir` (opcional): directorio de salida. Por defecto: `exports/exportsTflite/`
-- `--float16` (opcional): reduce tamaño; úsalo si el dispositivo soporta FP16.
-- `--int8` (opcional): cuantización int8 para máxima compresión.
-- Si no especificas `--dataset` o `--input`, toma automáticamente el modelo de 17 clases.
-
-## 🗺️ Estructura del Proyecto
-```
-TensorFlow/
-├── src/
-│   ├── entrenamiento.py        # Entrenamiento y guardado de modelos/métricas
-│   ├── generar_reporte.py      # Reportes PDF por dataset
-│   └── exportar_tflite.py      # Conversión .keras → .tflite
-├── data/
-│   ├── raw_float32/            # NPZ convertidos (se descargan con script)
-│   └── raw_float64/            # Backup/alternativa (también descargable)
-├── models/                     # .keras, métricas .json, PDFs
-├── logs/                       # y_test/y_pred/matriz_confusión + gráficos
-├── exports/
-│   ├── edge_impulse.edgei/     # Carpetas de clases (insumos etiquetados)
-│   ├── exportsTflite/          # Modelos .tflite listos para Android
-│   └── parametros-preprocesamiento/  # JSON de scaler para normalización en Kotlin
-├── scripts/
-│   └── download_data.py        # Descarga datasets desde Google Drive
-├── convert_mat_to_npz.py       # .mat → .npz
-├── convert_to_float32.py       # Normalización a float32
-├── exportar_parametros_preprocesamiento.py  # Exporta parámetros del scaler a JSON
-├── requirements.txt
-└── README.md
+## Instalacion y ejecucion
+### Clonar
+```bash
+git clone https://github.com/Hectorgh24/AplicacionTensorFlowAndKeras17.git
+cd AplicacionTensorFlowAndKeras17
 ```
 
-## 🐞 Errores Comunes y cómo resolverlos
-- **Falta TensorFlow / dependencias**: `pip install -r requirements.txt`.
-- **No encuentra datos (`File not found`)**: verifica que `data/raw_float32/` contenga los `.npz`; si no, ejecuta los convertidores.
-- **GPU no aparece**: `python - <<<'import tensorflow as tf; print(tf.config.list_physical_devices("GPU"))'`; si retorna `[]`, revisa drivers/CUDA o usa CPU.
-- **ValueError por shapes**: asegura que uses el dataset correcto; limpia artefactos viejos borrando `logs/*.npy` y `models/*_metricas.json` si cambiaste de configuración.
-- **Reporte falla al cargar métricas**: confirma que corriste entrenamiento antes del PDF y que el prefijo coincide (`entrenamiento_9_clases` vs `entrenamiento_17_clases`).
+### Abrir en Android Studio
+- Abre el proyecto y espera sincronizacion de Gradle.
+- Compila y ejecuta en dispositivo fisico (recomendado por uso de sensores).
 
-## 📚 Documentación usada
-- TensorFlow: https://www.tensorflow.org/api_docs
-- Keras: https://keras.io/api/
-- TensorFlow Lite Converter: https://www.tensorflow.org/lite/convert
-- scikit-learn: https://scikit-learn.org/stable/
-- UniMiB-SHAR dataset: https://www.dropbox.com/scl/fi/g5ig8nw9qqd253dz8woax/UniMiB-SHAR.zip?e=4&file_subpath=%2FUniMiB-SHAR%2Fdata%2Fresults%2Fresults51&rlkey=o0ltu8ivrr9rsfvdhr1bjv3cc&dl=0
-- ReportLab: https://www.reportlab.com/documentation/
-- Matplotlib: https://matplotlib.org/stable/contents.html
-- Seaborn: https://seaborn.pydata.org/
+## Estructura del proyecto
+Archivos principales:
 
-## 📖 Glosario
-- **Normalización (StandardScaler):** escala cada feature a media 0 y desviación estándar 1 para estabilizar el entrenamiento de redes.
-- **Etiquetado y remapeo:** los IDs originales del dataset se reindexan a clases consecutivas (p. ej., 0–8 o 0–16) para simplificar la salida softmax.
-- **Conv1D:** capas convolucionales 1D que barren la dimensión temporal para extraer patrones locales en series de tiempo.
-- **GaussianNoise:** ruido añadido a la entrada durante el entrenamiento; actúa como data augmentation y regularizador.
-- **Batch Normalization:** normaliza activaciones intermedias por batch para acelerar y estabilizar el aprendizaje.
-- **Dropout:** desactiva aleatoriamente neuronas en entrenamiento para reducir sobreajuste.
-- **Global Average Pooling (GAP):** promedia cada mapa de características, reduciendo parámetros antes de la capa densa final.
-- **Función de pérdida (cross-entropy):** mide divergencia entre distribución predicha y etiquetas verdaderas en clasificación multiclase.
-- **Class weighting:** asigna mayor peso a clases minoritarias para mitigar desbalance y reducir sesgo del modelo.
-- **Callbacks de entrenamiento:**  
-  - *EarlyStopping*: detiene cuando la validación deja de mejorar.  
-  - *ModelCheckpoint*: guarda el mejor modelo observado.  
-  - *ReduceLROnPlateau*: baja la tasa de aprendizaje al estancarse la validación.
-- **Métricas de evaluación:** accuracy, precision, recall, F1-score, matriz de confusión (aciertos/errores por clase).
-- **Inferencia vs. entrenamiento:** el modelo guardado (`_mejor_modelo`) se usa para despliegue; `_modelo` es el último estado de la sesión.
-- **TensorFlow Lite (TFLite):** formato optimizado para inferencia en dispositivos móviles/embebidos.
-- **Cuantización Float16 (post-training):** convierte pesos a FP16 para reducir tamaño; mantiene la estructura del grafo y suele conservar precisión.
-- **Delegados (NNAPI/GPU):** aceleran la ejecución TFLite en Android usando hardware dedicado cuando está disponible.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/FallDetectionService.kt`: servicio en primer plano para monitoreo continuo.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/FallDetectionClassifier.kt`: carga del modelo TFLite e inferencia.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/DataPreprocessor.kt`: lectura de `scaler_17_clases.json` y estandarizacion.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/SensorHandler.kt`: adquisicion del acelerometro y armado de ventanas.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/EmergencyProtocol.kt`: intento de WhatsApp, SMS y llamada.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/MonitoringLogManager.kt`: persistencia de sesion y exportacion de reporte JSON.
+- `app/src/main/java/com/empresa/aplicaciontensorflowandkeras17/ui/Screen/`: pantallas principales (`MainScreen`, `MonitorScreen`, `AlertScreen`, `SettingsScreen`, `AppNavigator`).
 
-## 📜 Licencia y contribución
-- Licencia: **MIT** (ver `LICENSE`).
-- Autor: Héctor (Estudiante de Licenciatura en Tecnologías Computacionales).
-- PRs bienvenidos: fork, rama feature, PR.
+## Permisos y comportamiento de emergencia
+Permisos definidos en `app/src/main/AndroidManifest.xml`:
+
+- `SEND_SMS`
+- `CALL_PHONE`
+- `INTERNET`
+- `SENSOR`
+- `POST_NOTIFICATIONS`
+- `FOREGROUND_SERVICE`
+- `FOREGROUND_SERVICE_HEALTH`
+
+Notas:
+- Si no se conceden permisos de SMS o llamada, la app muestra aviso y evita ejecutar esa accion.
+- La deteccion se ejecuta con servicio foreground para mantener monitoreo en segundo plano.
+
+## Registro y exportacion de reportes
+- La sesion de monitoreo se guarda en `monitoring_log.json` dentro de `filesDir`.
+- Desde Ajustes se puede exportar un reporte JSON con prefijo `monitoring_report_`.
+- Metricas incluidas: inicio/fin, duracion, ventanas procesadas, caidas detectadas, alertas enviadas, numero de emergencia y ultima prediccion.
 
 ---
 
-**Última actualización:** Abril 2026
+Autor: Hector (Licenciatura en Tecnologias Computacionales)  
+Ultima actualizacion: Abril 2026
