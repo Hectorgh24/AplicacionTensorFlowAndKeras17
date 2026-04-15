@@ -9,7 +9,7 @@ class DataPreprocessor(context: Context) {
     private var stds: FloatArray = FloatArray(453)
 
     companion object {
-        private const val SCALER_FILE = "scaler_9_clases.json"
+        private const val SCALER_FILE = "scaler_17_clases.json"
         private const val EXPECTED_FEATURES = 453
     }
 
@@ -33,7 +33,7 @@ class DataPreprocessor(context: Context) {
             }
         } catch (e: Exception) {
             // El tercer parámetro 'e' imprime toda la traza del error para copiar y pegar
-            Log.e("DataPreprocessor", "Error crítico al leer scaler_9_clases.json desde assets", e)
+            Log.e("DataPreprocessor", "Error crítico al leer scaler_17_clases.json desde assets", e)
         }
     }
 

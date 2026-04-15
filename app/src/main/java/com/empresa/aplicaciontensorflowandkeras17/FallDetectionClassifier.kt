@@ -15,13 +15,21 @@ class FallDetectionClassifier(context: Context) {
     private val preprocessor = DataPreprocessor(context)
 
     companion object {
-        private const val MODEL_PATH = "entrenamiento_9_clases_mejor_modelo.tflite"
+        private const val MODEL_PATH = "entrenamiento_17_clases_mejor_modelo.tflite"
         private const val INPUT_SIZE = 453 // 151 muestras x 3 ejes
-        private const val OUTPUT_CLASSES = 9
+        private const val OUTPUT_CLASSES = 17
     }
 
     private val classLabels = arrayOf(
+        "De pie",
+        "Levantándose",
         "Caminando",
+        "Corriendo",
+        "Subiendo",
+        "Saltando",
+        "Bajando",
+        "Acostado",
+        "Sentándose",
         "Caída frontal",
         "Caída a la derecha",
         "Caída hacia atrás",
