@@ -4,15 +4,21 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class FallDetectionService : Service() {
 
     private lateinit var classifier: FallDetectionClassifier
     private lateinit var sensorHandler: SensorHandler
+    private lateinit var inferenceExecutor: ExecutorService
+    @Volatile
+    private var classifierReady = false
 
     override fun onCreate() {
         super.onCreate()
@@ -20,13 +26,24 @@ class FallDetectionService : Service() {
         // 1. Crear el canal de notificaciones (OBLIGATORIO para evitar cierres forzados)
         createNotificationChannel()
 
-        classifier = FallDetectionClassifier(this)
+        inferenceExecutor = Executors.newSingleThreadExecutor()
+        inferenceExecutor.execute {
+            try {
+                classifier = FallDetectionClassifier(this)
+                classifierReady = true
+                Log.d("FallService", "Clasificador inicializado en segundo plano")
+            } catch (e: Exception) {
+                Log.e("FallService", "No se pudo inicializar el clasificador", e)
+            }
+        }
 
         sensorHandler = SensorHandler(this) { windowData ->
-            try {
-                processInference(windowData)
-            } catch (e: Exception) {
-                Log.e("FallService", "Fallo crítico al procesar la ventana de datos del sensor", e)
+            inferenceExecutor.execute {
+                try {
+                    processInference(windowData)
+                } catch (e: Exception) {
+                    Log.e("FallService", "Fallo crítico al procesar la ventana de datos del sensor", e)
+                }
             }
         }
     }
@@ -44,17 +61,29 @@ class FallDetectionService : Service() {
     }
 
     private fun processInference(data: FloatArray) {
+        if (!classifierReady) {
+            return
+        }
+
         val (label, confidence) = classifier.classify(data)
 
         // Actualizar la UI en tiempo real
         val porcentaje = (confidence * 100).toInt()
         val predictionText = "$label ($porcentaje%)"
         MonitoringState.currentPrediction.value = predictionText
-        MonitoringLogManager.updatePrediction(this, predictionText)
+        // Pasar tanto el texto de predicción como el nombre de clase crudo para el gráfico
+        MonitoringLogManager.updatePrediction(this, predictionText, label)
         MonitoringLogManager.recordWindow(this)
 
-        // Lógica de detección (> 85% de confianza y que no sea caminar)
-        if (label != "Caminando" && confidence > 0.85f) {
+        // Lista de clases que representan una caída real (índices 9 al 16)
+        val fallClasses = listOf(
+            "Caída frontal", "Caída a la derecha", "Caída hacia atrás", 
+            "Caída contra obstáculo", "Caída (protección)", "Caída al sentarse", 
+            "Desmayo / Síncope", "Caída a la izquierda"
+        )
+
+        // Lógica de detección: > 90% de confianza y debe ser estrictamente una clase de caída
+        if (label in fallClasses && confidence > 0.90f) {
             MonitoringLogManager.recordFall(this)
             Log.w("FallService", "CAÍDA DETECTADA: $label con $porcentaje%")
 
@@ -79,11 +108,15 @@ class FallDetectionService : Service() {
         val notification = NotificationCompat.Builder(this, "fall_channel")
             .setContentTitle("Protección activa")
             .setContentText("Monitoreando actividad en segundo plano")
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Asegúrate de que este ícono existe
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .build()
 
-        // 2. Iniciar el servicio en primer plano de manera segura
-        startForeground(1, notification)
+        // 2. Iniciar el servicio en primer plano con el tipo correcto (obligatorio en Android 14+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+        } else {
+            startForeground(1, notification)
+        }
         sensorHandler.start()
 
         return START_STICKY
@@ -95,7 +128,10 @@ class FallDetectionService : Service() {
         MonitoringState.currentPrediction.value = "Inactivo"
 
         sensorHandler.stop()
-        classifier.close()
+        if (classifierReady) {
+            classifier.close()
+        }
+        inferenceExecutor.shutdownNow()
         super.onDestroy()
     }
 

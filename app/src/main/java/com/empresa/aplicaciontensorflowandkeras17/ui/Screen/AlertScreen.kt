@@ -1,7 +1,8 @@
-package com.empresa.aplicaciontensorflowliteandkeras
+package com.empresa.aplicaciontensorflowandkeras17.ui.Screen
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +30,7 @@ fun AlertScreen(
 
     // Limpiar sonido al cerrar la pantalla
     DisposableEffect(Unit) {
-        DisposableEffectScope.onDispose {
+        onDispose {
             toneGenerator.release()
         }
     }

@@ -60,7 +60,9 @@ dependencies {
     
     // TensorFlow Lite & LiteRT
     implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
+    implementation(libs.tensorflow.lite.support) {
+        exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
+    }
     implementation(libs.tensorflow.lite.gpu)
     
     // JSON processing

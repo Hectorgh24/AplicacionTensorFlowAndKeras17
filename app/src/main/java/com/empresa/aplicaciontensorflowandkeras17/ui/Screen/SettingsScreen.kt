@@ -1,10 +1,11 @@
-package com.empresa.aplicaciontensorflowliteandkeras
+package com.empresa.aplicaciontensorflowandkeras17.ui.Screen
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -13,6 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringLogManager
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringSessionLog
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringState
+import com.empresa.aplicaciontensorflowandkeras17.ui.Screen.charts.SensorChart
+import com.empresa.aplicaciontensorflowandkeras17.ui.Screen.charts.TimelineChart
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,11 +29,15 @@ fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val session by MonitoringLogManager.currentSession.collectAsState()
     val savedSession by produceState<MonitoringSessionLog?>(initialValue = null, context) {
-        MutableState.value = MonitoringLogManager.loadLastSession(context)
+        value = MonitoringLogManager.loadLastSession(context)
     }
     var expanded by remember { mutableStateOf(false) }
     var reportPath by remember { mutableStateOf<String?>(null) }
     val visibleSession = session ?: savedSession
+
+    // Observar datos de gráficos en tiempo real
+    val predictionHistory by MonitoringState.predictionHistory.collectAsState()
+    val sensorHistory by MonitoringState.sensorHistory.collectAsState()
 
     Scaffold(
         topBar = {
@@ -44,16 +54,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(16.dp)
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { expanded = !expanded }
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Mientras log", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Monitoreo Log", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Visualizar métricas de monitoreo y generar reporte JSON",
+                        "Visualizar métricas de monitoreo, gráficos y generar reporte JSON",
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -79,6 +90,30 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("Alertas enviadas: ${visibleSession.alertsTriggered}")
                     Text("Número de emergencia: ${visibleSession.emergencyNumber}")
                     Text("Última predicción: ${visibleSession.currentPrediction}")
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // ──── Gráfico de Línea de Tiempo de Predicciones ────
+                    TimelineChart(
+                        predictionHistory = if (predictionHistory.isNotEmpty())
+                            predictionHistory
+                        else
+                            visibleSession.predictionHistory,
+                        durationSeconds = visibleSession.durationSeconds,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // ──── Gráfico de Acelerómetro en Tiempo Real ────
+                    SensorChart(
+                        sensorHistory = sensorHistory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
                 } else {
                     Text(
                         "No hay datos de sesión disponibles.",

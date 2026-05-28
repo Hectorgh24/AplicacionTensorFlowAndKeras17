@@ -1,6 +1,9 @@
-package com.empresa.aplicaciontensorflowliteandkeras
+package com.empresa.aplicaciontensorflowandkeras17.ui.Screen
 
 import android.content.Context
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringLogManager
+import com.empresa.aplicaciontensorflowandkeras17.MonitoringState
+import com.empresa.aplicaciontensorflowandkeras17.ejecutarProtocoloEmergencia
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable

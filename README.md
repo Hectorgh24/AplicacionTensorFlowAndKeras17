@@ -9,7 +9,8 @@ Aplicacion movil Android desarrollada en Kotlin + Jetpack Compose para monitoreo
 4. [Instalacion y ejecucion](#instalacion-y-ejecucion)
 5. [Estructura del proyecto](#estructura-del-proyecto)
 6. [Permisos y comportamiento de emergencia](#permisos-y-comportamiento-de-emergencia)
-7. [Registro y exportacion de reportes](#registro-y-exportacion-de-reportes)
+7. [Monitoreo y visualizacion de graficos](#monitoreo-y-visualizacion-de-graficos)
+8. [Registro y exportacion de reportes](#registro-y-exportacion-de-reportes)
 
 ## Descripcion general
 - La app captura datos del acelerometro a 50 Hz y procesa ventanas de 151 muestras x 3 ejes (453 valores).
@@ -82,6 +83,12 @@ Permisos definidos en `app/src/main/AndroidManifest.xml`:
 Notas:
 - Si no se conceden permisos de SMS o llamada, la app muestra aviso y evita ejecutar esa accion.
 - La deteccion se ejecuta con servicio foreground para mantener monitoreo en segundo plano.
+
+## Monitoreo y visualizacion de graficos
+La pantalla de monitoreo cuenta con un dashboard visual interactivo compuesto por dos graficos principales, los cuales garantizan un rendimiento fluido en tiempo real sin congelamientos incluso en sesiones prolongadas:
+
+1. **Grafico de Acelerometro (Datos en bruto)**: Muestra los valores de los ejes X, Y, Z capturados por el sensor a 50Hz, dibujando de forma continua mediante un esquema de scroll horizontal para observar con precision la fisica de los movimientos.
+2. **Grafico de Inferencia**: Presenta un historial interactivo (scatter plot) de todas las predicciones arrojadas por el modelo TFLite, mapeando el tiempo de operacion contra la actividad o caida detectada. Soporta un amplio registro historico en memoria sin degradar el rendimiento.
 
 ## Registro y exportacion de reportes
 - La sesion de monitoreo se guarda en `monitoring_log.json` dentro de `filesDir`.
