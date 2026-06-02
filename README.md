@@ -120,17 +120,26 @@ Mejoras implementadas para garantizar una operacion confiable del servicio de mo
 - El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z).
 - Esto permite reconstruir graficos exactos en Python usando la nueva herramienta gráfica.
 
-### Herramienta Python de Reconstrucción Visual
-Se movieron los scripts de Python a una carpeta dedicada para mantener limpio el código de la app.
+### 🐍 Herramienta Python de Reconstrucción Visual (JSON a MP4)
+Se diseñó un módulo externo de Python (ubicado en la carpeta `python_tools/`) para leer el JSON exportado y generar animaciones precisas.
+
+**Características Técnicas de Generación de Video:**
+- **MP4 Nativo sin dependencias de sistema:** La herramienta instala y utiliza el paquete `imageio-ffmpeg` para descargar un binario portátil de FFmpeg interno en Python. Esto se inyecta en `matplotlib.rcParams['animation.ffmpeg_path']`, eliminando la necesidad de que el usuario instale FFmpeg manualmente o configure variables de entorno (`PATH`) en Windows.
+- **Tolerancia a fallos (Fallback a GIF):** Si ocurre alguna excepción crítica al codificar en H.264 (.mp4), el bloque `try-except` captura el fallo y delega la tarea a `PillowWriter` para generar una animación en formato `.gif` de respaldo.
+- **Prevención de Bugs Gráficos:** Para evitar los cierres forzados (`array is 1-dimensional`) de Matplotlib al inicializar la gráfica cuando aún no hay puntos detectados, se inyectan matrices bidimensionales vacías mediante `np.empty((0, 2))`.
+
+**Instalación y Uso Automático:**
+La herramienta contiene lógica de autodescubrimiento. Si falta alguna librería (`matplotlib`, `numpy`, `Pillow`, `imageio-ffmpeg`), invocará a `pip` internamente para instalarla y se reiniciará automáticamente.
+
 1. Entra a la carpeta `python_tools/`.
 2. Ejecuta la interfaz gráfica haciendo doble clic o usando la terminal:
 ```bash
 python interfaz_grafica.py
 ```
-*(Nota: la herramienta revisará e instalará automáticamente las dependencias necesarias como `matplotlib` o `numpy`).*
-3. Coloca **solo un archivo JSON** en la carpeta `python_tools/input_json/`.
-4. Presiona el botón "Generar Videos" en la interfaz.
-5. Los resultados se guardarán en la carpeta `python_tools/output_videos/`.
+3. La herramienta creará automáticamente las carpetas `input_json/` y `output_videos/`.
+4. Coloca **solo un archivo JSON** en la carpeta `python_tools/input_json/`.
+5. Presiona el botón verde "Generar Videos" en la interfaz.
+6. Los videos MP4 generados (`linea_tiempo_monitoreo.mp4` y `acelerometro_monitoreo.mp4`) aparecerán en `output_videos/`.
 
 ### Correccion de navegacion en alertas de caida
 - Se cambio `FLAG_ACTIVITY_CLEAR_TOP` por `FLAG_ACTIVITY_SINGLE_TOP` en el intent de alerta.
