@@ -118,8 +118,19 @@ Mejoras implementadas para garantizar una operacion confiable del servicio de mo
 
 ### Exportacion completa de datos del acelerometro
 - El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z).
-- Esto permite reconstruir graficos exactos en Python usando el script `generar_video_monitoreo.py`.
-- El script Python fue actualizado para generar dos videos: uno de predicciones y otro del acelerometro.
+- Esto permite reconstruir graficos exactos en Python usando la nueva herramienta gráfica.
+
+### Herramienta Python de Reconstrucción Visual
+Se movieron los scripts de Python a una carpeta dedicada para mantener limpio el código de la app.
+1. Entra a la carpeta `python_tools/`.
+2. Ejecuta la interfaz gráfica haciendo doble clic o usando la terminal:
+```bash
+python interfaz_grafica.py
+```
+*(Nota: la herramienta revisará e instalará automáticamente las dependencias necesarias como `matplotlib` o `numpy`).*
+3. Coloca **solo un archivo JSON** en la carpeta `python_tools/input_json/`.
+4. Presiona el botón "Generar Videos" en la interfaz.
+5. Los resultados se guardarán en la carpeta `python_tools/output_videos/`.
 
 ### Correccion de navegacion en alertas de caida
 - Se cambio `FLAG_ACTIVITY_CLEAR_TOP` por `FLAG_ACTIVITY_SINGLE_TOP` en el intent de alerta.
