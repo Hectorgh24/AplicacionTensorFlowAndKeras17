@@ -2,6 +2,7 @@ import json
 import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import numpy as np
 
 # Lista de clases en el mismo orden que la aplicación Android
 CLASS_LIST = [
@@ -32,11 +33,8 @@ def cargar_datos(json_path):
     with open(json_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def generar_video(json_path="datos-monitoreo-tensorflow-keras-17-clases.json", output_path="linea_tiempo_monitoreo.mp4"):
-    data = cargar_datos(json_path)
-    if not data:
-        return
-
+def generar_video_predicciones(data, output_path="linea_tiempo_monitoreo.mp4"):
+    """Genera un video animado de la línea de tiempo de predicciones."""
     history = data.get("predictionHistory", [])
     if not history:
         print("El historial de predicciones está vacío. No hay datos para graficar.")
@@ -135,10 +133,106 @@ def generar_video(json_path="datos-monitoreo-tensorflow-keras-17-clases.json", o
         fig, update, frames=frames_total, init_func=init, blit=False, interval=1000
     )
 
-    # Intentar guardar el archivo de video
-    # Nota: requiere tener instalado 'ffmpeg' en el sistema del usuario
+    _guardar_animacion(ani, output_path)
+    plt.close(fig)
+
+
+def generar_video_acelerometro(data, output_path="acelerometro_monitoreo.mp4"):
+    """
+    Genera un video animado del gráfico de acelerómetro (ejes X, Y, Z) 
+    reconstruyendo exactamente lo que se mostró en la app Android.
+    """
+    sensor_data = data.get("sensorHistory", [])
+    if not sensor_data:
+        print("El historial del sensor está vacío. No hay datos para graficar el acelerómetro.")
+        return
+
+    duration = data.get("durationSeconds", 30)
+    print(f"Generando animación del acelerómetro. Duración: {duration}s. Muestras registradas: {len(sensor_data)}")
+
+    # Extraer arrays de datos
+    times_ms = np.array([d["timeOffsetMillis"] for d in sensor_data], dtype=float)
+    times_s = times_ms / 1000.0
+    x_vals = np.array([d["x"] for d in sensor_data], dtype=float)
+    y_vals = np.array([d["y"] for d in sensor_data], dtype=float)
+    z_vals = np.array([d["z"] for d in sensor_data], dtype=float)
+
+    # Configuración de la figura (estilo oscuro premium, mismos colores que la app)
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
+    fig.patch.set_facecolor('#1E1E1E')
+    ax.set_facecolor('#121212')
+
+    ax.set_title("Datos del Acelerómetro (Reconstrucción)", color='#FFFFFF', fontsize=12, fontweight='bold', pad=15)
+    ax.set_xlabel("Tiempo (segundos)", color='#E0E0E0', fontsize=10, labelpad=10)
+    ax.set_ylabel("Aceleración (m/s²)", color='#E0E0E0', fontsize=10, labelpad=10)
+    ax.set_ylim(-25, 25)
+    ax.tick_params(colors='#E0E0E0')
+    ax.grid(True, color='#2C2C2C', linestyle='--', linewidth=0.5)
+
+    for spine in ax.spines.values():
+        spine.set_color('#2C2C2C')
+
+    # Colores idénticos a los de la app Android (SensorChart.kt)
+    color_x = '#EF5350'  # Rojo
+    color_y = '#66BB6A'  # Verde
+    color_z = '#42A5F5'  # Azul
+
+    line_x, = ax.plot([], [], color=color_x, linewidth=1.5, label='Eje X')
+    line_y, = ax.plot([], [], color=color_y, linewidth=1.5, label='Eje Y')
+    line_z, = ax.plot([], [], color=color_z, linewidth=1.5, label='Eje Z')
+    ax.legend(loc='upper right', facecolor='#1E1E1E', edgecolor='#2C2C2C', labelcolor='#E0E0E0')
+
+    # Ventana deslizante de ~10 segundos (igual que la app)
+    visible_window = 10.0
+
+    def init():
+        line_x.set_data([], [])
+        line_y.set_data([], [])
+        line_z.set_data([], [])
+        ax.set_xlim(0, visible_window)
+        return line_x, line_y, line_z
+
+    def update(frame):
+        # frame = segundo actual
+        current_time = float(frame)
+
+        # Filtrar muestras hasta el segundo actual
+        mask = times_s <= current_time
+        t_vis = times_s[mask]
+        x_vis = x_vals[mask]
+        y_vis = y_vals[mask]
+        z_vis = z_vals[mask]
+
+        # Aplicar ventana deslizante: solo mostrar últimos 10 segundos
+        if current_time > visible_window:
+            window_mask = t_vis >= (current_time - visible_window)
+            t_vis = t_vis[window_mask]
+            x_vis = x_vis[window_mask]
+            y_vis = y_vis[window_mask]
+            z_vis = z_vis[window_mask]
+            ax.set_xlim(current_time - visible_window, current_time)
+        else:
+            ax.set_xlim(0, visible_window)
+
+        line_x.set_data(t_vis, x_vis)
+        line_y.set_data(t_vis, y_vis)
+        line_z.set_data(t_vis, z_vis)
+
+        return line_x, line_y, line_z
+
+    frames_total = int(duration) + 2
+    ani = animation.FuncAnimation(
+        fig, update, frames=frames_total, init_func=init, blit=False, interval=1000
+    )
+
+    _guardar_animacion(ani, output_path)
+    plt.close(fig)
+
+
+def _guardar_animacion(ani, output_path):
+    """Intenta guardar la animación como MP4 (ffmpeg) o GIF (pillow) como fallback."""
     try:
-        print("Guardando video como MP4 (requiere ffmpeg instalado en el sistema)...")
+        print(f"Guardando video como MP4 (requiere ffmpeg instalado en el sistema)...")
         ani.save(output_path, writer='ffmpeg', fps=1)
         print(f"¡Éxito! Video guardado en '{output_path}'.")
     except Exception as e:
@@ -152,6 +246,11 @@ def generar_video(json_path="datos-monitoreo-tensorflow-keras-17-clases.json", o
             print(f"No se pudo guardar como GIF: {gif_error}")
             print("\nConsejo: Para compilar a MP4 en Windows, instala ffmpeg e incorpóralo a tus variables de entorno.")
 
+
 if __name__ == "__main__":
     # Nombre del archivo JSON por defecto que exporta la app
-    generar_video()
+    json_file = "datos-monitoreo-tensorflow-keras-17-clases.json"
+    data = cargar_datos(json_file)
+    if data:
+        generar_video_predicciones(data)
+        generar_video_acelerometro(data)

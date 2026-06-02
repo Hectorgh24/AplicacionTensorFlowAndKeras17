@@ -11,6 +11,7 @@ Aplicacion movil Android desarrollada en Kotlin + Jetpack Compose para monitoreo
 6. [Permisos y comportamiento de emergencia](#permisos-y-comportamiento-de-emergencia)
 7. [Monitoreo y visualizacion de graficos](#monitoreo-y-visualizacion-de-graficos)
 8. [Registro y exportacion de reportes](#registro-y-exportacion-de-reportes)
+9. [Optimizaciones de rendimiento y estabilidad](#optimizaciones-de-rendimiento-y-estabilidad)
 
 ## Descripcion general
 - La app captura datos del acelerometro a 50 Hz y procesa ventanas de 151 muestras x 3 ejes (453 valores).
@@ -95,7 +96,41 @@ La pantalla de monitoreo cuenta con un dashboard visual interactivo compuesto po
 - Desde Ajustes se puede exportar un reporte JSON con prefijo `monitoring_report_`.
 - Metricas incluidas: inicio/fin, duracion, ventanas procesadas, caidas detectadas, alertas enviadas, numero de emergencia y ultima prediccion.
 
+## Optimizaciones de rendimiento y estabilidad
+Mejoras implementadas para garantizar una operacion confiable del servicio de monitoreo en segundo plano y una experiencia de usuario fluida:
+
+### Temporizador de sesion de 2 minutos
+- Cada sesion de monitoreo dura exactamente **120 segundos** y se auto-detiene al finalizar.
+- Se muestra un temporizador visual en la pantalla de monitoreo que cambia a rojo en los ultimos 10 segundos.
+- Implementado con `CountDownTimer` que actualiza el estado reactivo `MonitoringState.remainingSeconds`.
+
+### WakeLock parcial para ejecucion en segundo plano
+- Se adquiere un `PARTIAL_WAKE_LOCK` al iniciar el servicio para mantener la CPU activa incluso con la pantalla apagada.
+- Timeout de seguridad de 3 minutos para evitar fugas de recursos.
+- Se agrego el permiso `WAKE_LOCK` al `AndroidManifest.xml`.
+
+### Optimizacion de graficos en tiempo real (anti-congelamiento)
+- Se separaron los datos del sensor en dos buffers:
+  - `fullSensorHistory`: almacena **todas** las muestras para la exportacion JSON completa.
+  - `displaySensorBuffer`: buffer circular de 500 puntos para el grafico en pantalla.
+- Se implemento **throttle de publicacion**: el `StateFlow` del sensor solo se actualiza cada 12 muestras (~4Hz visual), evitando recomposiciones excesivas de Compose que causaban congelamiento de graficos.
+- Se utiliza `CopyOnWriteArrayList` para evitar `ConcurrentModificationException` desde el hilo del sensor.
+
+### Exportacion completa de datos del acelerometro
+- El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z).
+- Esto permite reconstruir graficos exactos en Python usando el script `generar_video_monitoreo.py`.
+- El script Python fue actualizado para generar dos videos: uno de predicciones y otro del acelerometro.
+
+### Correccion de navegacion en alertas de caida
+- Se cambio `FLAG_ACTIVITY_CLEAR_TOP` por `FLAG_ACTIVITY_SINGLE_TOP` en el intent de alerta.
+- Se agrego `android:launchMode="singleTop"` en el `AndroidManifest.xml`.
+- Se implemento `onNewIntent()` en `MainActivity` para manejar intents sin recrear la Activity.
+- Esto evita que la navegacion se reinicie y saque al usuario de la pantalla de monitoreo cuando se detecta una caida.
+
+### Notificacion persistente
+- Se agrego `.setOngoing(true)` a la notificacion del servicio para evitar que el usuario la descarte accidentalmente.
+
 ---
 
 Autor: Hector (Licenciatura en Tecnologias Computacionales)  
-Ultima actualizacion: Abril 2026
+Ultima actualizacion: Junio 2026
