@@ -124,7 +124,9 @@ Mejoras implementadas para garantizar una operacion confiable del servicio de mo
 Se diseñó un módulo externo de Python (ubicado en la carpeta `python_tools/`) para leer el JSON exportado y generar animaciones precisas.
 
 **Características Técnicas de Generación de Video:**
-- **MP4 Nativo sin dependencias de sistema:** La herramienta instala y utiliza el paquete `imageio-ffmpeg` para descargar un binario portátil de FFmpeg interno en Python. Esto se inyecta en `matplotlib.rcParams['animation.ffmpeg_path']`, eliminando la necesidad de que el usuario instale FFmpeg manualmente o configure variables de entorno (`PATH`) en Windows.
+- **Alta Definición y Fluidez (1080p a 30 FPS):** La herramienta matemática fue recalibrada para generar videos fluidos animando el recorrido del sensor a 30 cuadros por segundo. Su lienzo está escalado a 16:9 con 120 DPI y 8000 kbps de bitrate, lo que garantiza una salida nítida exactamente a 1920x1080 píxeles, sin textos borrosos.
+- **Compatibilidad Universal MP4 (yuv420p):** La herramienta inyecta comandos avanzados a FFmpeg (`-vcodec libx264`, `-pix_fmt yuv420p`, `-profile:v high`) forzando una codificación de color estándar. Esto repara el error típico de matplotlib donde los videos MP4 generados bloquean los controles del reproductor (impidiendo adelantar o atrasar). Ahora son nativamente compatibles con QuickTime, Windows Media y navegadores web.
+- **Sin Dependencias de Sistema:** La herramienta instala y utiliza el paquete `imageio-ffmpeg` para descargar un binario portátil de FFmpeg interno, eliminando la necesidad de que el usuario lo instale manualmente en el sistema operativo.
 - **Tolerancia a fallos (Fallback a GIF):** Si ocurre alguna excepción crítica al codificar en H.264 (.mp4), el bloque `try-except` captura el fallo y delega la tarea a `PillowWriter` para generar una animación en formato `.gif` de respaldo.
 - **Prevención de Bugs Gráficos:** Para evitar los cierres forzados (`array is 1-dimensional`) de Matplotlib al inicializar la gráfica cuando aún no hay puntos detectados, se inyectan matrices bidimensionales vacías mediante `np.empty((0, 2))`.
 
