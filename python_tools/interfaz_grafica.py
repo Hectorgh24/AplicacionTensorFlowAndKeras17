@@ -125,15 +125,18 @@ def procesar_videos():
 setup_folders() # Crear carpetas al abrir la app
 root = tk.Tk()
 root.title("Reconstruccion Visual - Monitoreo")
-root.geometry("600x400")
-root.eval('tk::PlaceWindow . center') # Centrar en pantalla
+# Quitar root.geometry("600x400") para permitir auto-ajuste al DPI de la pantalla
 root.configure(bg="#f4f4f9")
+
+# Padding externo general para que no este apretado
+main_frame = tk.Frame(root, bg="#f4f4f9", padx=40, pady=30)
+main_frame.pack(fill=tk.BOTH, expand=True)
 
 # Estilos simples
 font_title = ("Arial", 16, "bold")
 font_text = ("Arial", 11)
 
-tk.Label(root, text="Herramienta de Videos de Monitoreo (17 Clases)", font=font_title, bg="#f4f4f9", fg="#333").pack(pady=20)
+tk.Label(main_frame, text="Herramienta de Videos de Monitoreo (17 Clases)", font=font_title, bg="#f4f4f9", fg="#333").pack(pady=(0, 20))
 
 instrucciones = (
     "Sigue estos pasos:\n\n"
@@ -142,13 +145,13 @@ instrucciones = (
     "3. Presiona el boton verde de abajo.\n"
     "4. Ve a la carpeta 'output_videos' para ver los resultados."
 )
-tk.Label(root, text=instrucciones, font=font_text, bg="#f4f4f9", fg="#555", justify="left").pack(padx=20, pady=10)
+tk.Label(main_frame, text=instrucciones, font=font_text, bg="#f4f4f9", fg="#555", justify="left").pack(padx=20, pady=10)
 
-btn_generar = tk.Button(root, text="🚀 GENERAR VIDEOS", font=("Arial", 14, "bold"), bg="#4CAF50", fg="white", 
+btn_generar = tk.Button(main_frame, text="🚀 GENERAR VIDEOS", font=("Arial", 14, "bold"), bg="#4CAF50", fg="white", 
                         command=procesar_videos, relief=tk.RAISED, cursor="hand2", padx=20, pady=10)
 btn_generar.pack(pady=25)
 
-lbl_status = tk.Label(root, text="Las carpetas input_json y output_videos estan listas.", font=("Arial", 10, "italic"), bg="#f4f4f9", fg="#777")
+lbl_status = tk.Label(main_frame, text="Las carpetas input_json y output_videos estan listas.", font=("Arial", 10, "italic"), bg="#f4f4f9", fg="#777")
 lbl_status.pack(pady=5)
 
 root.mainloop()

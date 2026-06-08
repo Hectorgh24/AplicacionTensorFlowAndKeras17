@@ -1,7 +1,10 @@
 import json
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.ticker as ticker
 from matplotlib.animation import FFMpegWriter
 import numpy as np
 
@@ -44,7 +47,8 @@ def generar_video_predicciones(data, output_path):
     
     ax.set_title("Línea de Tiempo de Actividades y Caídas (17 Clases)", color='#FFFFFF', fontsize=12, fontweight='bold', pad=15)
     ax.set_xlabel("Tiempo (segundos)", color='#E0E0E0', fontsize=10, labelpad=10)
-    ax.grid(True, which='both', color='#2C2C2C', linestyle='--', linewidth=0.5)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.grid(True, which='major', color='#2C2C2C', linestyle='--', linewidth=0.5)
 
     scatter_normal = ax.scatter([], [], color='#00E5FF', s=50, label='Actividades normales', edgecolors='none')
     scatter_fall = ax.scatter([], [], color='#FF1744', s=60, label='Caídas detectadas', edgecolors='none')
@@ -125,8 +129,9 @@ def generar_video_acelerometro(data, output_path):
     ax.set_xlabel("Tiempo (segundos)", color='#E0E0E0', fontsize=10, labelpad=10)
     ax.set_ylabel("Aceleración (m/s²)", color='#E0E0E0', fontsize=10, labelpad=10)
     ax.set_ylim(-25, 25)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.tick_params(colors='#E0E0E0')
-    ax.grid(True, color='#2C2C2C', linestyle='--', linewidth=0.5)
+    ax.grid(True, which='major', color='#2C2C2C', linestyle='--', linewidth=0.5)
 
     for spine in ax.spines.values():
         spine.set_color('#2C2C2C')
