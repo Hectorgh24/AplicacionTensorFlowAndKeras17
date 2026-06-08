@@ -13,7 +13,7 @@ import android.provider.MediaStore
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.*
 
 /**
  * Evento de predicción individual para el gráfico de línea de tiempo.
@@ -148,16 +148,19 @@ object MonitoringLogManager {
 
     /**
      * Lista completa de datos del sensor para guardar en el JSON final.
-     * Usa CopyOnWriteArrayList para evitar ConcurrentModificationException desde
-     * el hilo del sensor.
+     * Usamos una lista normal protegida por sincronización para evitar CopyOnWriteArrayList
+     * que genera miles de arreglos y causa pausas de Garbage Collector enormes.
      */
-    private val fullSensorHistory = CopyOnWriteArrayList<SensorEventData>()
+    private val fullSensorHistory = mutableListOf<SensorEventData>()
 
     /**
      * Buffer circular para la visualización en tiempo real del gráfico.
      * Solo los últimos 500 puntos (~10 segundos a 50Hz).
      */
-    private val displaySensorBuffer = CopyOnWriteArrayList<SensorEventData>()
+    private val displaySensorBuffer = ArrayDeque<SensorEventData>()
+
+    // Objeto para sincronizar acceso a las colecciones del sensor
+    private val sensorLock = Any()
 
     /** Contador de throttle para publicar al StateFlow solo cada N muestras (~4Hz visual) */
     private var sensorSampleCount = 0
@@ -165,8 +168,10 @@ object MonitoringLogManager {
 
     fun startSession(context: Context, emergencyNumber: String) {
         // Limpiar buffers de sesión anterior
-        fullSensorHistory.clear()
-        displaySensorBuffer.clear()
+        synchronized(sensorLock) {
+            fullSensorHistory.clear()
+            displaySensorBuffer.clear()
+        }
         sensorSampleCount = 0
 
         val session = MonitoringSessionLog(
@@ -195,32 +200,35 @@ object MonitoringLogManager {
         }
     }
 
-    /**
-     * Registra datos crudos del sensor acelerómetro.
-     * - Guarda TODOS los datos en fullSensorHistory para el JSON de exportación.
-     * - Mantiene solo los últimos 500 puntos en displaySensorBuffer para el gráfico.
-     * - Publica al StateFlow solo cada N muestras para evitar recomposiciones excesivas
-     *   que causan que los gráficos se "traben".
-     */
     fun recordSensorData(x: Float, y: Float, z: Float) {
         _currentSession.value?.let { session ->
             val offset = System.currentTimeMillis() - session.sessionStartMillis
             val data = SensorEventData(offset, x, y, z)
 
-            // Guardar en historial completo (sin límite, para exportación a JSON/Python)
-            fullSensorHistory.add(data)
+            var shouldPublish = false
+            var snapshot: List<SensorEventData> = emptyList()
 
-            // Guardar en buffer circular para gráfico en tiempo real
-            displaySensorBuffer.add(data)
-            if (displaySensorBuffer.size > 500) {
-                displaySensorBuffer.removeAt(0)
+            synchronized(sensorLock) {
+                // Guardar en historial completo (sin límite, para exportación a JSON/Python)
+                fullSensorHistory.add(data)
+
+                // Guardar en buffer circular para gráfico en tiempo real
+                displaySensorBuffer.addLast(data)
+                if (displaySensorBuffer.size > 500) {
+                    displaySensorBuffer.removeFirst()
+                }
+
+                // Throttle: publicar al StateFlow solo cada N muestras para evitar congelamiento
+                sensorSampleCount++
+                if (sensorSampleCount >= PUBLISH_EVERY_N) {
+                    sensorSampleCount = 0
+                    shouldPublish = true
+                    snapshot = ArrayList(displaySensorBuffer)
+                }
             }
 
-            // Throttle: publicar al StateFlow solo cada N muestras para evitar congelamiento
-            sensorSampleCount++
-            if (sensorSampleCount >= PUBLISH_EVERY_N) {
-                sensorSampleCount = 0
-                MonitoringState.sensorHistory.value = ArrayList(displaySensorBuffer)
+            if (shouldPublish) {
+                MonitoringState.sensorHistory.value = snapshot
             }
         }
     }
@@ -249,8 +257,10 @@ object MonitoringLogManager {
     fun stopSession(context: Context) {
         _currentSession.value?.let {
             // Copiar los datos completos del sensor al log de sesión antes de guardar
-            it.sensorHistory.clear()
-            it.sensorHistory.addAll(fullSensorHistory)
+            synchronized(sensorLock) {
+                it.sensorHistory.clear()
+                it.sensorHistory.addAll(fullSensorHistory)
+            }
             _currentSession.value = it.copy(sessionEndMillis = System.currentTimeMillis())
             saveCurrentSession(context)
         }
@@ -274,8 +284,10 @@ object MonitoringLogManager {
         val session = _currentSession.value ?: loadLastSession(context)
         return session?.let {
             // Si la sesión activa no tiene datos de sensor copiados aún, inyectarlos
-            if (it.sensorHistory.isEmpty() && fullSensorHistory.isNotEmpty()) {
-                it.sensorHistory.addAll(fullSensorHistory)
+            synchronized(sensorLock) {
+                if (it.sensorHistory.isEmpty() && fullSensorHistory.isNotEmpty()) {
+                    it.sensorHistory.addAll(fullSensorHistory)
+                }
             }
 
             val jsonContent = it.toJson().toString(2)

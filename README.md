@@ -109,12 +109,17 @@ Mejoras implementadas para garantizar una operacion confiable del servicio de mo
 - Timeout de seguridad de 3 minutos para evitar fugas de recursos.
 - Se agrego el permiso `WAKE_LOCK` al `AndroidManifest.xml`.
 
-### Optimizacion de graficos en tiempo real (anti-congelamiento)
+### Optimizacion de graficos y memoria (Anti-congelamiento)
 - Se separaron los datos del sensor en dos buffers:
   - `fullSensorHistory`: almacena **todas** las muestras para la exportacion JSON completa.
-  - `displaySensorBuffer`: buffer circular de 500 puntos para el grafico en pantalla.
-- Se implemento **throttle de publicacion**: el `StateFlow` del sensor solo se actualiza cada 12 muestras (~4Hz visual), evitando recomposiciones excesivas de Compose que causaban congelamiento de graficos.
-- Se utiliza `CopyOnWriteArrayList` para evitar `ConcurrentModificationException` desde el hilo del sensor.
+  - `displaySensorBuffer`: buffer circular para el grafico en pantalla.
+- Se implemento **throttle de publicacion**: el `StateFlow` del sensor solo se actualiza cada 12 muestras (~4Hz visual), evitando recomposiciones excesivas de Compose que causaban ralentizaciones.
+- Se elimino el uso de `CopyOnWriteArrayList` (el cual generaba un grave problema de *Garbage Collection* y congelaba la app alrededor del segundo 44 al crear miles de arreglos por segundo). En su lugar, se emplean listas mutables nativas protegidas por bloques `synchronized` para asegurar rendimiento maximo sin colisiones de hilos.
+
+### Inferencia de Ventana Deslizante (Sliding Window)
+- Para cumplir con el requerimiento de graficar y detectar actividad **cada 1 segundo**, se modifico la logica del `SensorHandler`.
+- Una vez llena la ventana de 151 muestras requerida por TensorFlow, el buffer ya no se vacia desde cero. En cambio, realiza un desplazamiento de datos (shift) retrocediendo solo 50 muestras (equivalente a 1 segundo a 50Hz).
+- Esto permite al modelo tener siempre una ventana solida de 3 segundos de historial fisico para analizar, pero arrojando resultados continuamente **segundo a segundo** de manera fluida.
 
 ### Exportacion completa de datos del acelerometro
 - El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z).
@@ -140,8 +145,8 @@ python interfaz_grafica.py
 ```
 3. La herramienta creará automáticamente las carpetas `input_json/` y `output_videos/`.
 4. Coloca **solo un archivo JSON** en la carpeta `python_tools/input_json/`.
-5. Presiona el botón verde "Generar Videos" en la interfaz.
-6. Los videos MP4 generados (`linea_tiempo_monitoreo.mp4` y `acelerometro_monitoreo.mp4`) aparecerán en `output_videos/`.
+5. Presiona el boton verde "Generar Videos" en la interfaz.
+6. Los videos MP4 generados (`TensorFlowKeras17_linea_tiempo_monitoreo.mp4` y `TensorFlowKeras17_acelerometro_monitoreo.mp4`) apareceran en `output_videos/`.
 
 ### Correccion de navegacion en alertas de caida
 - Se cambio `FLAG_ACTIVITY_CLEAR_TOP` por `FLAG_ACTIVITY_SINGLE_TOP` en el intent de alerta.

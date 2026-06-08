@@ -82,8 +82,8 @@ def procesar_videos():
     try:
         data = generar_videos.cargar_datos(json_path)
         
-        video_pred = os.path.join(OUTPUT_DIR, "linea_tiempo_monitoreo.mp4")
-        video_accel = os.path.join(OUTPUT_DIR, "acelerometro_monitoreo.mp4")
+        video_pred = os.path.join(OUTPUT_DIR, "TensorFlowKeras17_linea_tiempo_monitoreo.mp4")
+        video_accel = os.path.join(OUTPUT_DIR, "TensorFlowKeras17_acelerometro_monitoreo.mp4")
         
         # Eliminar versiones viejas si existen para evitar sobreescritura confusa
         if os.path.exists(video_pred): os.remove(video_pred)
