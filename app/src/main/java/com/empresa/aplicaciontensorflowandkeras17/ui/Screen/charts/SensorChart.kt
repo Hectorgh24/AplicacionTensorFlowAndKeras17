@@ -122,9 +122,9 @@ fun SensorChart(
             val lastTime = sensorHistory.last().timeOffsetMillis / 1000f
             val visibleRange = maxOf(lastTime - firstTime, 1f)
 
-            // Líneas de cuadrícula verticales (cada 2 segundos)
+            // Líneas de cuadrícula verticales (cada 1 segundo)
             val timeStart = firstTime
-            var t = (timeStart.toInt() / 2 * 2).toFloat()
+            var t = (timeStart.toInt() / 1 * 1).toFloat()
             while (t <= lastTime) {
                 if (t >= firstTime) {
                     val xPos = leftMargin + ((t - firstTime) / visibleRange) * drawableWidth
@@ -145,7 +145,7 @@ fun SensorChart(
                         }
                     )
                 }
-                t += 2f
+                t += 1f
             }
 
             // Función para dibujar una línea de datos

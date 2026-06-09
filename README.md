@@ -122,8 +122,12 @@ Mejoras implementadas para garantizar una operacion confiable del servicio de mo
 - Esto permite al modelo tener siempre una ventana solida de 3 segundos de historial fisico para analizar, pero arrojando resultados continuamente **segundo a segundo** de manera fluida.
 
 ### Exportacion completa de datos del acelerometro
-- El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z).
-- Esto permite reconstruir graficos exactos en Python usando la nueva herramienta gráfica.
+- El reporte JSON ahora incluye el campo `sensorHistory` con **todos** los datos brutos del acelerometro (offset en ms, ejes X/Y/Z). El archivo JSON guarda la telemetría exacta en el milisegundo en que ocurre, asegurando un registro ininterrumpido sin pérdida de datos.
+- Esto permite reconstruir graficos exactos en Python usando la nueva herramienta grafica.
+
+### Estandarizacion de Intervalos Visuales a 1 Segundo
+- Se ajustaron los Canvas nativos en Jetpack Compose (`TimelineChart` y `SensorChart`) para que las cuadriculas y marcas de tiempo de las graficas de monitoreo se dibujen estrictamente cada **1 segundo**.
+- Esto garantiza paridad visual con los videos generados en Python, permitiendo un analisis preciso segundo a segundo tanto en la aplicacion Android como en la herramienta de escritorio, manteniendo intacta la recoleccion de los datos en bruto en el JSON.
 
 ### 🐍 Herramienta Python de Reconstrucción Visual (JSON a MP4)
 Se diseñó un módulo externo de Python (ubicado en la carpeta `python_tools/`) para leer el JSON exportado y generar animaciones precisas.

@@ -146,11 +146,11 @@ fun TimelineChart(
                         )
                     }
 
-                    // Líneas de cuadrícula verticales cada 5 segundos dentro de la ventana de tiempo
+                    // Líneas de cuadrícula verticales cada 1 segundo dentro de la ventana de tiempo
                     val timeRange = maxTime - minTime
                     val xStep = chartWidth / timeRange
                     
-                    var t = (minTime / 5f).toInt() * 5f
+                    var t = (minTime / 1f).toInt() * 1f
                     while (t <= maxTime) {
                         if (t >= minTime) {
                             val x = (t - minTime) * xStep
@@ -173,7 +173,7 @@ fun TimelineChart(
                                 }
                             )
                         }
-                        t += 5f
+                        t += 1f
                     }
 
                     // Dibujar puntos de predicción
