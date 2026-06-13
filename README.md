@@ -168,3 +168,13 @@ python interfaz_grafica.py
 
 Autor: Hector (Licenciatura en Tecnologias Computacionales)  
 Ultima actualizacion: Junio 2026
+
+
+## 🔬 Integración con Orquestador Multimodelo (Actualización)
+Esta aplicación fue modificada para operar simultáneamente con otros 3 modelos de Inteligencia Artificial en un solo dispositivo (Poco F7) durante protocolos de investigación científica.
+
+### Mejoras Críticas Implementadas:
+1. **Independencia del Servicio (DummyForegroundService)**: Se separó la lógica de inmunidad en segundo plano de sus servicios anteriores, asegurando un canal de notificación exclusivo (monitoreo_channel_high) para forzar la notificación flotante permanente.
+2. **Permisos Híbridos en Manifest**: A los permisos previos de salud (health) se les sumó la declaración explícita de DATA_SYNC en el manifiesto para el DummyForegroundService.
+3. **Inyección en Ciclo de Vida**: El archivo MainActivity.kt fue parcheado para arrancar este proceso en segundo plano en onResume(), blindando la lectura ininterrumpida del acelerómetro a 100Hz.
+4. **Sincronización UDP**: Capacidad de iniciar/detener la recolección mediante START_MONITORING / STOP_MONITORING vía Broadcast UDP en toda la subred.
