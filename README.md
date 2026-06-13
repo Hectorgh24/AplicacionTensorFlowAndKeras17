@@ -178,3 +178,10 @@ Esta aplicación fue modificada para operar simultáneamente con otros 3 modelos
 2. **Permisos Híbridos en Manifest**: A los permisos previos de salud (health) se les sumó la declaración explícita de DATA_SYNC en el manifiesto para el DummyForegroundService.
 3. **Inyección en Ciclo de Vida**: El archivo MainActivity.kt fue parcheado para arrancar este proceso en segundo plano en onResume(), blindando la lectura ininterrumpida del acelerómetro a 100Hz.
 4. **Sincronización UDP**: Capacidad de iniciar/detener la recolección mediante START_MONITORING / STOP_MONITORING vía Broadcast UDP en toda la subred.
+
+### ⏱️ Rendimiento de Generación de Videos (Aceleración AMF)
+Durante las pruebas de campo en un equipo HP Victus (AMD Radeon RX 6550M), el renderizado de gráficos de la telemetría tardó lo siguiente:
+* **Video de Línea de Tiempo (Predicciones)**: ~46 minutos (241.92 MB)
+* **Video de Acelerómetro (Ejes X,Y,Z)**: ~30 minutos (92.19 MB)
+* **Tiempo Total por Ciclo (120s)**: ~1 hora y 16 minutos.
+> Nota: El incremento de tiempo respecto a modelos más pequeños se debe a la inmensa cantidad de cálculos visuales requeridos para trazar la inferencia de 17 clases por segundo usando Matplotlib.
